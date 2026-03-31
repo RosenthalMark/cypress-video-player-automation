@@ -13,7 +13,7 @@ describe('UX Behavior and Layout Persistence', () => {
       cy.get('.ytp-mute-button').click();
       cy.getMediaEngine().should('have.prop', 'muted', true);
       
-      // Staff move: Ensure property persists after a reload
+// Verify state persistence across page lifecycle events
       cy.reload();
       cy.getMediaEngine().should('have.prop', 'muted', true);
     });

@@ -1,7 +1,7 @@
 {
     "name": "cypress-video-player-automation",
     "version": "1.0.0",
-    "description": "Staff-level Cypress framework for media player validation",
+    "description": "Enterprise Cypress framework for media player and HLS stream validation",
     "main": "index.js",
     "scripts": {
       "cypress:open": "npx cypress open",
