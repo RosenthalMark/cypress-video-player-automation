@@ -1,6 +1,7 @@
 const { defineConfig } = require("cypress");
 
 module.exports = defineConfig({
+  projectId: 'gc4e5z',
   e2e: {
     baseUrl: 'https://www.youtube.com',
     chromeWebSecurity: false,
