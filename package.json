@@ -1,0 +1,15 @@
+{
+    "name": "cypress-video-player-automation",
+    "version": "1.0.0",
+    "description": "Staff-level Cypress framework for media player validation",
+    "main": "index.js",
+    "scripts": {
+      "cypress:open": "npx cypress open",
+      "cypress:run": "npx cypress run"
+    },
+    "author": "Mark Rosenthal",
+    "license": "MIT",
+    "devDependencies": {
+      "cypress": "^13.0.0"
+    }
+  }
