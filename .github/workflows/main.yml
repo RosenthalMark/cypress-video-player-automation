@@ -4,14 +4,17 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
 permissions:
-  pull-requests: write
   contents: read
+  pull-requests: write
+  issues: write
 
 jobs:
   cypress-run:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,3 +28,75 @@ jobs:
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           CYPRESS_env: production
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Cypress screenshots (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-screenshots
+          path: cypress/screenshots/**
+          if-no-files-found: ignore
+
+  pr-comment:
+    if: always() && github.event_name == 'pull_request'
+    needs: cypress-run
+    runs-on: ubuntu-latest
+    steps:
+      - name: Upsert PR comment with Cypress result
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const marker = '<!-- cypress-ci-status -->'
+            const status = '${{ needs.cypress-run.result }}'
+            const owner = context.repo.owner
+            const repo = context.repo.repo
+            const issue_number = context.issue.number
+            const serverUrl = process.env.GITHUB_SERVER_URL || 'https://github.com'
+            const runId = process.env.GITHUB_RUN_ID
+            const runUrl = `${serverUrl}/${owner}/${repo}/actions/runs/${runId}`
+            const commitUrl = `${serverUrl}/${owner}/${repo}/commit/${context.sha}`
+            const branch = context.payload.pull_request?.head?.ref || context.ref
+            const iconMap = { success: '✅', failure: '❌', cancelled: '⚪', skipped: '⚪' }
+            const icon = iconMap[status] || '⚪'
+            const conclusion = status.toUpperCase()
+
+            const body = [
+              marker,
+              `### ${icon} Cypress CI: ${conclusion}`,
+              '',
+              `- Workflow run: [View logs](${runUrl})`,
+              `- Commit: [\`${context.sha.slice(0, 7)}\`](${commitUrl})`,
+              `- Branch: \`${branch}\``,
+              `- Trigger: \`${context.eventName}\``
+            ].join('\n')
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100
+            })
+
+            const existing = comments.find((comment) =>
+              comment.user?.type === 'Bot' &&
+              typeof comment.body === 'string' &&
+              comment.body.includes(marker)
+            )
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body
+              })
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body
+              })
+            }
